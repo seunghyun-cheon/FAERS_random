@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FAERS 과제 배정</title>
+<style>
+:root{--bg:#f6f7f9;--card:#fff;--fg:#1d2330;--mut:#5d6677;--line:#dfe3ea;--acc:#1f5fbf;--acc2:#e8f0fc;--warn:#b42318;--ok:#067647}
+@media (prefers-color-scheme:dark){:root{--bg:#14171c;--card:#1d2128;--fg:#e8ebf0;--mut:#9aa3b2;--line:#323844;--acc:#6ea2f0;--acc2:#1f2d44;--warn:#f97066;--ok:#47cd89}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.55 -apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR",sans-serif}
+main{max-width:960px;margin:0 auto;padding:24px 16px 64px}
+h1{font-size:22px;margin:0 0 4px}
+h2{font-size:16px;margin:0 0 12px}
+.sub{color:var(--mut);margin:0 0 20px;font-size:14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:18px;margin-bottom:16px}
+form{display:flex;gap:8px;flex-wrap:wrap}
+input{flex:1 1 160px;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--fg);font-size:15px}
+button{padding:10px 16px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--fg);font-size:14px;cursor:pointer}
+button.primary{background:var(--acc);border-color:var(--acc);color:#fff;font-weight:600}
+button.danger{color:var(--warn);border-color:var(--warn)}
+button:disabled{opacity:.5;cursor:default}
+.msg{margin-top:10px;font-size:14px;min-height:1em}
+.msg.err{color:var(--warn)}.msg.ok{color:var(--ok)}
+#result .who{font-weight:600;margin-bottom:10px}
+.tag{display:inline-block;font-size:12px;padding:1px 8px;border-radius:99px;background:var(--acc2);color:var(--acc);margin-right:6px}
+.item{border-top:1px solid var(--line);padding:10px 0}
+.item:first-of-type{border-top:0}
+.item b{font-size:16px}
+.item .meta{color:var(--mut);font-size:13px}
+.item a{color:var(--acc)}
+.tablewrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th,td{border-bottom:1px solid var(--line);padding:7px 6px;text-align:left;vertical-align:top}
+th{color:var(--mut);font-weight:600;white-space:nowrap}
+.row{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.row h2{margin:0}
+.tools{display:flex;gap:6px;flex-wrap:wrap}
+.mode{font-size:12px;color:var(--mut)}
+td .x{padding:2px 8px;font-size:12px}
+</style>
+</head>
+<body>
+<main>
+  <h1>FAERS 실습 과제 배정</h1>
+  <p class="sub">학생마다 ATC 4단계 약물계열 <span id="nA">1</span>개와 SMQ <span id="nS">3</span>개를 무작위로 배정합니다. 한 번 배정되면 같은 학번으로 다시 뽑을 수 없습니다.</p>
+
+  <section class="card">
+    <h2>배정 받기</h2>
+    <form id="f">
+      <input id="sid" placeholder="학번" autocomplete="off" required>
+      <input id="name" placeholder="이름" autocomplete="off" required>
+      <button class="primary" id="go">무작위 배정</button>
+    </form>
+    <div class="msg" id="msg"></div>
+  </section>
+
+  <section class="card" id="result" hidden></section>
+
+  <section class="card">
+    <div class="row">
+      <h2>배정 기록 (<span id="cnt">0</span>명)</h2>
+      <div class="tools">
+        <button id="refresh">새로고침</button>
+        <button id="csv">CSV 저장</button>
+        <button id="admin">관리자 모드</button>
+        <button class="danger" id="reset" hidden>기록 전체 초기화</button>
+      </div>
+    </div>
+    <div class="tablewrap"><table>
+      <thead><tr><th>#</th><th>시각</th><th>학번</th><th>이름</th><th>ATC 계열</th><th>SMQ</th><th class="adm" hidden></th></tr></thead>
+      <tbody id="tb"></tbody>
+    </table></div>
+    <p class="mode" id="mode"></p>
+  </section>
+</main>
+<script src="config.js"></script>
+<script src="data.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
