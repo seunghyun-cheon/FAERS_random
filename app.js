@@ -47,21 +47,33 @@
     async reset(pw) { this.check(pw); this.save([]); return []; },
     async remove(pw, sid) { this.check(pw); const h = this.load().filter(r => r.studentId !== sid); this.save(h); return h; },
   };
+  // 공유 모드: 모든 요청에 비밀번호 필요. 컴퓨터마다 한 번 입력하면 그 브라우저에 기억.
+  const PW_KEY = 'faers_assign_pw';
   const remote = {
-    async call(body) {
-      const r = await fetch(C.BACKEND_URL, { method: 'POST', body: JSON.stringify(body),
+    pw() {
+      let pw = null; try { pw = localStorage.getItem(PW_KEY); } catch {}
+      if (!pw) {
+        pw = prompt('비밀번호 (이 컴퓨터에서 처음 한 번만 입력)');
+        if (pw === null) throw new Error('비밀번호가 필요합니다.');
+        try { localStorage.setItem(PW_KEY, pw); } catch {}
+      }
+      return pw;
+    },
+    async call(body, retry = true) {
+      const r = await fetch(C.BACKEND_URL, { method: 'POST', body: JSON.stringify({ ...body, password: this.pw() }),
         headers: { 'Content-Type': 'text/plain;charset=utf-8' } });
       const j = await r.json();
+      if (!j.ok && j.auth && retry) { try { localStorage.removeItem(PW_KEY); } catch {} alert(j.error); return this.call(body, false); }
       if (!j.ok) throw new Error(j.error || '서버 오류');
       return j;
     },
-    async list() { const j = await (await fetch(C.BACKEND_URL)).json(); return j.history; },
+    async list() { return (await this.call({ action: 'list' })).history; },
     async draw(studentId, name) {
       return this.call({ action: 'draw', studentId, name, nAtc: C.N_ATC, nSmq: C.N_SMQ, uniqueAtc: C.UNIQUE_ATC,
         atcPool: P.atc.map(a => a.id), smqPool: P.smq.map(s => s.id) });
     },
-    async reset(pw) { return (await this.call({ action: 'reset', password: pw })).history; },
-    async remove(pw, sid) { return (await this.call({ action: 'delete', password: pw, studentId: sid })).history; },
+    async reset() { return (await this.call({ action: 'reset' })).history; },
+    async remove(_, sid) { return (await this.call({ action: 'delete', studentId: sid })).history; },
   };
   const store = C.BACKEND_URL ? remote : local;
 
@@ -73,17 +85,32 @@
 
   function msg(t, cls) { $('msg').textContent = t; $('msg').className = 'msg ' + (cls || ''); }
 
-  function showResult(rec, existing) {
-    const a = rec.atc.map(id => ATC[id]).filter(Boolean), s = rec.smq.map(id => SMQ[id]).filter(Boolean);
-    $('result').innerHTML =
-      `<div class="who">${esc(rec.studentId)} ${esc(rec.name)} — ${existing ? '이미 배정된 결과' : '배정 결과'} <span class="meta mode">(${fmt(rec.timestamp)})</span></div>` +
+  function resultHtml(rec, existing, a, s) {
+    return `<div class="who">${esc(rec.studentId)} ${esc(rec.name)} — ${existing ? '이미 배정된 결과' : '추첨 결과'} <span class="meta mode">(${fmt(rec.timestamp)})</span></div>` +
       `<h2>ATC 4단계 약물계열</h2>` +
-      a.map(x => `<div class="item"><span class="tag">${esc(x.area)}</span><b>${esc(x.code)}</b> ${esc(x.name)}
+      a.map(x => `<div class="item"><span class="tag">${esc(x.area)}</span><b>${esc(x.code)}</b> <b>${esc(x.name)}</b>
          <div class="meta"><a href="${esc(x.url)}" target="_blank" rel="noopener">WHO ATC/DDD Index에서 성분 확인</a></div></div>`).join('') +
       `<h2 style="margin-top:14px">SMQ</h2>` +
       s.map(x => `<div class="item"><span class="tag">${esc(x.area)}</span><b>${esc(x.name)}</b>
          <div class="meta">${esc(x.ko)}</div></div>`).join('');
-    $('result').hidden = false;
+  }
+
+  // 새 추첨이면 후보를 빠르게 돌리다가 결과에서 멈춤(화면 연출용; 결과는 이미 확정·저장된 상태)
+  function showResult(rec, existing) {
+    const a = rec.atc.map(id => ATC[id]).filter(Boolean), s = rec.smq.map(id => SMQ[id]).filter(Boolean);
+    const box = $('result'); box.hidden = false;
+    if (existing) { box.className = 'card'; box.innerHTML = resultHtml(rec, existing, a, s); return Promise.resolve(); }
+    const pick = arr => arr[rint(arr.length)];
+    const total = 1800, start = performance.now();
+    box.className = 'card rolling';
+    return new Promise(done => {
+      (function tick() {
+        const t = performance.now() - start;
+        if (t >= total) { box.className = 'card'; box.innerHTML = resultHtml(rec, existing, a, s); return done(); }
+        box.innerHTML = resultHtml(rec, existing, a.map(() => pick(P.atc)), s.map(() => pick(P.smq)));
+        setTimeout(tick, 40 + 160 * (t / total));
+      })();
+    });
   }
 
   function render() {
@@ -109,13 +136,13 @@
     ev.preventDefault();
     const sid = $('sid').value.trim(), name = $('name').value.trim();
     if (!sid || !name) return msg('학번과 이름을 모두 입력하세요.', 'err');
-    $('go').disabled = true; msg('배정 중…');
+    $('go').disabled = true; msg('추첨 중…');
     try {
       const r = await store.draw(sid, name);
-      history = r.history; render(); showResult(r.record, r.existing);
+      history = r.history; msg(''); await showResult(r.record, r.existing); render();
       if (r.existing && r.record.name !== name)
-        msg(`학번 ${sid}은 이미 "${r.record.name}" 이름으로 배정되어 있습니다. 잘못 입력했다면 교수자에게 알려주세요.`, 'err');
-      else msg(r.existing ? '이미 배정된 학번입니다. 기존 결과를 보여줍니다.' : '배정되었습니다. 결과를 기록해 두세요.', r.existing ? 'err' : 'ok');
+        msg(`학번 ${sid}은 이미 "${r.record.name}" 이름으로 배정되어 있습니다. 다시 추첨하려면 관리자 모드에서 해당 기록을 삭제하세요.`, 'err');
+      else msg(r.existing ? '이미 배정된 학번입니다. 기존 결과를 보여줍니다.' : '추첨 완료 — 기록에 저장되었습니다.', r.existing ? 'err' : 'ok');
     } catch (e) { msg('배정 실패: ' + e.message, 'err'); }
     $('go').disabled = false;
   });
@@ -123,9 +150,10 @@
   $('refresh').onclick = refresh;
   $('admin').onclick = () => {
     if (adminPw !== null) { adminPw = null; return render(); }
+    if (C.BACKEND_URL) { adminPw = ''; return render(); }  // 공유 모드는 이미 비밀번호로 접속한 상태
     const pw = prompt('관리자 비밀번호');
     if (pw === null) return;
-    if (!C.BACKEND_URL && pw !== C.LOCAL_ADMIN_PASSWORD) return alert('비밀번호가 틀렸습니다.');
+    if (pw !== C.LOCAL_ADMIN_PASSWORD) return alert('비밀번호가 틀렸습니다.');
     adminPw = pw; render();
   };
   $('reset').onclick = async () => {

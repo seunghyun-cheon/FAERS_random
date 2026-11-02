@@ -46,11 +46,14 @@ function checkPw_(pw) {
 }
 
 function doGet() {
-  return out_({ ok: true, history: readAll_() });
+  return out_({ ok: false, error: 'POST only' });
 }
 
 function doPost(e) {
   var req = JSON.parse(e.postData.contents);
+  // 모든 요청(조회 포함)에 비밀번호 요구: URL을 아는 다른 사람이 기록을 보거나 쓰지 못하게 함
+  if (!checkPw_(req.password)) return out_({ ok: false, auth: true, error: '비밀번호가 틀렸습니다.' });
+  if (req.action === 'list') return out_({ ok: true, history: readAll_() });
   var lock = LockService.getScriptLock();
   lock.waitLock(20000);
   try {
@@ -78,7 +81,6 @@ function doPost(e) {
       return out_({ ok: true, existing: false, record: rec, history: hist });
     }
     if (req.action === 'reset' || req.action === 'delete') {
-      if (!checkPw_(req.password)) return out_({ ok: false, error: '관리자 비밀번호가 틀렸습니다.' });
       var sh = sheet_();
       if (req.action === 'reset') {
         if (sh.getLastRow() > 1) sh.deleteRows(2, sh.getLastRow() - 1);

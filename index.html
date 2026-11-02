@@ -22,7 +22,11 @@ button.danger{color:var(--warn);border-color:var(--warn)}
 button:disabled{opacity:.5;cursor:default}
 .msg{margin-top:10px;font-size:14px;min-height:1em}
 .msg.err{color:var(--warn)}.msg.ok{color:var(--ok)}
-#result .who{font-weight:600;margin-bottom:10px}
+#result .who{font-weight:600;font-size:20px;margin-bottom:12px}
+#result .item b{font-size:24px}
+#result .item .meta{font-size:16px}
+#result h2{font-size:18px}
+#result.rolling .item{opacity:.55}
 .tag{display:inline-block;font-size:12px;padding:1px 8px;border-radius:99px;background:var(--acc2);color:var(--acc);margin-right:6px}
 .item{border-top:1px solid var(--line);padding:10px 0}
 .item:first-of-type{border-top:0}
@@ -43,14 +47,14 @@ td .x{padding:2px 8px;font-size:12px}
 <body>
 <main>
   <h1>FAERS 실습 과제 배정</h1>
-  <p class="sub">학생마다 ATC 4단계 약물계열 <span id="nA">1</span>개와 SMQ <span id="nS">3</span>개를 무작위로 배정합니다. 한 번 배정되면 같은 학번으로 다시 뽑을 수 없습니다.</p>
+  <p class="sub">학생 앞에서 학번·이름을 입력하고 추첨합니다. 학생마다 ATC 4단계 약물계열 <span id="nA">1</span>개와 SMQ <span id="nS">3</span>개를 무작위로 배정합니다. 한 번 배정되면 같은 학번으로 다시 뽑을 수 없습니다.</p>
 
   <section class="card">
-    <h2>배정 받기</h2>
+    <h2>학생 추첨</h2>
     <form id="f">
       <input id="sid" placeholder="학번" autocomplete="off" required>
       <input id="name" placeholder="이름" autocomplete="off" required>
-      <button class="primary" id="go">무작위 배정</button>
+      <button class="primary" id="go">추첨</button>
     </form>
     <div class="msg" id="msg"></div>
   </section>
